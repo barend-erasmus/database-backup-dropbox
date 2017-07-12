@@ -1,0 +1,36 @@
+{
+  "name": "database-backup-dropbox",
+  "version": "0.0.1",
+  "description": "Backups database and copies file to DropBox",
+  "main": "./src/app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/barend-erasmus/database-backup-dropbox.git"
+  },
+  "author": "Barend Erasmus",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/barend-erasmus/database-backup-dropbox/issues"
+  },
+  "homepage": "https://github.com/barend-erasmus/database-backup-dropbox#readme",
+  "dependencies": {
+    "co": "^4.6.0",
+    "delay": "^2.0.0",
+    "moment": "^2.18.1",
+    "mssql": "^4.0.4",
+    "read-chunk": "^2.0.0",
+    "request": "^2.81.0",
+    "request-promise": "^4.2.1",
+    "winston": "^2.3.1",
+    "yargs": "^8.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^8.0.10"
+  },
+  "bin": {
+    "database-backup-dropbox": "./bin/database-backup-dropbox"
+  }
+}
