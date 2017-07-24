@@ -12,6 +12,7 @@ import * as readChunk from 'read-chunk';
 import { DropBoxGateway } from './dropbox-gateway';
 
 const argv = require('yargs')
+    .usage('Usage: $0 [options]')
     .demand('fileNamePrefix', 'Filename Prefix')
     .demand('filePath', 'File Path')
     .demand('databaseName', 'Database Name')
@@ -31,50 +32,45 @@ const accessToken = argv.accessToken;
 
 co(function* () {
 
-    while (true) {
-        const dropBoxGateway = new DropBoxGateway();
+    const dropBoxGateway = new DropBoxGateway();
 
-        const fileName = `${fileNamePrefix}_${moment().format('MM-DD-YYYY-HH-mm-ss')}.Bak`;
+    const fileName = `${fileNamePrefix}_${moment().format('MM-DD-YYYY-HH-mm-ss')}.Bak`;
 
-        const sqlConfig = {
-            user: databaseUser,
-            password: databasePassword,
-            server: databaseHost,
-            database: databaseName
-        };
+    const sqlConfig = {
+        user: databaseUser,
+        password: databasePassword,
+        server: databaseHost,
+        database: databaseName
+    };
 
-        const pool = yield sql.connect(sqlConfig);
-        const sqlResult = yield pool.request().query(`BACKUP DATABASE ${databaseName} TO DISK = '${path.join(filePath, fileName)}'`);
-        pool.close();
+    const pool = yield sql.connect(sqlConfig);
+    const sqlResult = yield pool.request().query(`BACKUP DATABASE ${databaseName} TO DISK = '${path.join(filePath, fileName)}'`);
+    pool.close();
 
 
-        const fileSize = fs.statSync(path.join(filePath, fileName)).size;
+    const fileSize = fs.statSync(path.join(filePath, fileName)).size;
 
-        const chunkSize = 100000;
+    const chunkSize = 100000;
 
-        const sessionId = yield dropBoxGateway.startSession(accessToken);
+    const sessionId = yield dropBoxGateway.startSession(accessToken);
 
-        for (let i = 0; i < fileSize; i = i + chunkSize) {
-            const buffer = readChunk.sync(path.join(filePath, fileName), i, chunkSize);
+    for (let i = 0; i < fileSize; i = i + chunkSize) {
+        const buffer = readChunk.sync(path.join(filePath, fileName), i, chunkSize);
 
-            for (let j = 0; j < 5; j++) {
-                try {
-                    yield dropBoxGateway.appendSession(accessToken, sessionId, i, buffer);
-                    break;
-                } catch (err) {
-                    winston.error(err);
-                    yield delay(1000);
-                }
+        for (let j = 0; j < 5; j++) {
+            try {
+                yield dropBoxGateway.appendSession(accessToken, sessionId, i, buffer);
+                break;
+            } catch (err) {
+                winston.error(err);
+                yield delay(1000);
             }
-
-            winston.info(`${i} / ${fileSize}`);
         }
 
-        yield dropBoxGateway.endSession(accessToken, sessionId, `/${fileName}`, fileSize);
-
-        yield delay(43200000); // 12 Hours
-
+        winston.info(`${i} / ${fileSize}`);
     }
+
+    yield dropBoxGateway.endSession(accessToken, sessionId, `/${fileName}`, fileSize);
 
 }).catch((err) => {
     winston.error(err);
