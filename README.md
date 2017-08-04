@@ -31,4 +31,4 @@ This command will create two files, namely `MyDatabase_07-24-2017-18-21-45.Bak` 
 
 ## Notes
 
-This tool only support MS SQL Server databases.
+This tool only supports MS SQL Server databases.
