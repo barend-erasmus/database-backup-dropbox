@@ -1,5 +1,4 @@
 // Imports
-import * as co from 'co';
 import * as winston from 'winston';
 import * as moment from 'moment';
 import * as sql from 'mssql';
@@ -31,36 +30,36 @@ const databaseHost = argv.databaseHost;
 const databasePassword = argv.databasePassword;
 const accessToken = argv.accessToken;
 
-co(function* () {
+app().catch((err) => {
+    winston.error(err);
+});
+
+async function app() {
 
     const fileName = `${fileNamePrefix}_${moment().format('MM-DD-YYYY-HH-mm-ss')}.Bak`;
     const compressedFileName = `${fileName}.gz`;
 
-    yield backupDatabase(databaseHost, databaseUser, databasePassword, databaseName, path.join(filePath, fileName));
+    await backupDatabase(databaseHost, databaseUser, databasePassword, databaseName, path.join(filePath, fileName));
 
-    yield compressFile(path.join(filePath, fileName), path.join(filePath, compressedFileName));
+    await compressFile(path.join(filePath, fileName), path.join(filePath, compressedFileName));
 
-    yield uploadFile(path.join(filePath, compressedFileName), accessToken);
+    await uploadFile(path.join(filePath, compressedFileName), accessToken);
 
-}).catch((err) => {
-    winston.error(err);
-});
+}
 
-function backupDatabase(host: string, user: string, password: string, database: string, filename: string): Promise<void> {
-    return co(function* () {
-        const sqlConfig = {
-            user: user,
-            password: password,
-            server: host,
-            database: database
-        };
+async function backupDatabase(host: string, user: string, password: string, database: string, filename: string): Promise<void> {
+    const sqlConfig = {
+        user: user,
+        password: password,
+        server: host,
+        database: database
+    };
 
-        const pool = yield sql.connect(sqlConfig);
-        const sqlResult = yield pool.request().query(`BACKUP DATABASE ${database} TO DISK = '${filename}'`);
-        pool.close();
+    const pool = await sql.connect(sqlConfig);
+    const sqlResult = await pool.request().query(`BACKUP DATABASE ${database} TO DISK = '${filename}'`);
+    pool.close();
 
-        return;
-    });
+    return;
 }
 
 function compressFile(inputFilename: string, outputFilename: string): Promise<void> {
@@ -82,35 +81,32 @@ function compressFile(inputFilename: string, outputFilename: string): Promise<vo
     });
 }
 
-function uploadFile(filename: string, token: string): Promise<void> {
-    return co(function* () {
-
+async function uploadFile(filename: string, token: string): Promise<void> {
         const dropBoxGateway = new DropBoxGateway();
 
         const fileSize = fs.statSync(filename).size;
 
         const chunkSize = 100000;
 
-        const sessionId = yield dropBoxGateway.startSession(accessToken);
+        const sessionId = await dropBoxGateway.startSession(accessToken);
 
         for (let i = 0; i < fileSize; i = i + chunkSize) {
             const buffer = readChunk.sync(filename, i, chunkSize);
 
             for (let j = 0; j < 5; j++) {
                 try {
-                    yield dropBoxGateway.appendSession(token, sessionId, i, buffer);
+                    await dropBoxGateway.appendSession(token, sessionId, i, buffer);
                     break;
                 } catch (err) {
                     winston.error(err);
-                    yield delay(1000);
+                    await delay(1000);
                 }
             }
 
             winston.info(`${i} / ${fileSize}`);
         }
 
-        yield dropBoxGateway.endSession(accessToken, sessionId, `/${path.basename(filename)}`, fileSize);
+        await dropBoxGateway.endSession(accessToken, sessionId, `/${path.basename(filename)}`, fileSize);
 
         return;
-    });
 }
